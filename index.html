@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CourseCraft</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .clay-effect {
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 5px 5px 10px rgba(0,0,0,0.1),
+                    -5px -5px 10px rgba(255,255,255,0.8);
+        transition: transform 0.2s;
+    }
+    .clay-effect:hover {
+        transform: translateY(-2px);
+    }
+    .tab-active {
+        border-top: 3px solid #1a1a1a;
+    }
+</style>
+<body class="bg-gray-100">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="fixed inset-0 bg-gray-100 flex items-center justify-center min-h-screen p-4">
+        <div class="clay-effect p-8 w-full max-w-md">
+            <h1 class="text-2xl font-bold mb-6 text-center">CourseCraft</h1>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <input type="text" id="userId" placeholder="User ID" class="w-full p-3 rounded border" required>
+                </div>
+                <div>
+                    <input type="email" id="email" placeholder="Email" class="w-full p-3 rounded border" required>
+                </div>
+                <div>
+                    <input type="password" id="password" placeholder="Password" class="w-full p-3 rounded border" required>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="remember" class="mr-2">
+                    <label for="remember">Remember Password</label>
+                </div>
+                <button type="submit" class="w-full bg-gray-800 text-white p-3 rounded hover:bg-gray-700">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+        <!-- Top Navigation -->
+        <nav class="bg-white shadow-md">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <h1 class="text-xl font-bold">CourseCraft</h1>
+                <button id="logoutBtn" class="text-gray-600 hover:text-gray-800">
+                    <i class="bi bi-box-arrow-right text-xl"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <div class="container mx-auto px-4 py-6">
+            <!-- Tabs -->
+            <div id="tabs" class="grid grid-cols-2 gap-4 mb-6">
+                <button class="tab-active p-4 text-center bg-white rounded-t-lg shadow-md" onclick="showTab('home')">Home</button>
+                <button class="p-4 text-center bg-white rounded-t-lg shadow-md" onclick="showTab('progress')">Your Progress</button>
+            </div>
+
+            <!-- Home Content -->
+            <div id="homeContent" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <!-- Course cards will be dynamically added here -->
+            </div>
+
+            <!-- Progress Content -->
+            <div id="progressContent" class="hidden space-y-6">
+                <div class="clay-effect p-6">
+                    <h3 class="text-lg font-semibold mb-4">Learning Progress</h3>
+                    <canvas id="progressChart"></canvas>
+                </div>
+                <div class="clay-effect p-6">
+                    <h3 class="text-lg font-semibold mb-4">Purchase History</h3>
+                    <div id="purchaseHistory" class="space-y-2">
+                        <!-- Purchase history items will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const courses = [
+            { name: 'Literature (Free)', id: 'literature' },
+            { name: 'Civil Engineering', id: 'civil' },
+            { name: 'Computer Science', id: 'cs' },
+            { name: 'Mathematics', id: 'math' },
+            { name: 'Economics', id: 'economics' },
+            { name: 'Mechanical Engineering', id: 'mechanical' },
+            { name: 'Biology', id: 'biology' },
+            { name: 'Physics', id: 'physics' },
+            { name: 'Chemistry', id: 'chemistry' },
+            { name: 'Business Management', id: 'business' }
+        ];
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            alert(`Login successful! A confirmation email has been sent to ${email}`);
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            initializeApp();
+        });
+
+        function initializeApp() {
+            const homeContent = document.getElementById('homeContent');
+            homeContent.innerHTML = '';
+            
+            courses.forEach(course => {
+                const card = createCourseCard(course);
+                homeContent.appendChild(card);
+            });
+
+            initializeProgressChart();
+            initializePurchaseHistory();
+        }
+
+        function createCourseCard(course) {
+            const div = document.createElement('div');
+            div.className = 'clay-effect p-4 cursor-pointer';
+            div.innerHTML = `<h3 class="font-semibold">${course.name}</h3>`;
+            div.onclick = () => showModeSelection(course);
+            return div;
+        }
+
+        function showModeSelection(course) {
+            const modes = ['Normal Mode', 'Gamified Mode'];
+            const html = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div class="bg-white p-6 rounded-lg max-w-md w-full">
+                        <h3 class="text-lg font-semibold mb-4">Select Learning Mode</h3>
+                        <div class="space-y-3">
+                            ${modes.map(mode => `
+                                <button onclick="showMaterials('${course.id}', '${mode}')" 
+                                        class="w-full p-3 text-left rounded bg-gray-100 hover:bg-gray-200">
+                                    ${mode}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <button onclick="closeModal(this)" class="mt-4 w-full p-2 bg-gray-800 text-white rounded">Close</button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function showMaterials(courseId, mode) {
+            const materials = ['Revision Notes', 'Past Year Papers', 'Practice Papers'];
+            const html = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div class="bg-white p-6 rounded-lg max-w-md w-full">
+                        <h3 class="text-lg font-semibold mb-4">Select Material</h3>
+                        <div class="space-y-3">
+                            ${materials.map(material => `
+                                <button onclick="handleMaterialSelection('${courseId}', '${material}', '${mode}')" 
+                                        class="w-full p-3 text-left rounded bg-gray-100 hover:bg-gray-200">
+                                    ${material}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <button onclick="closeModal(this)" class="mt-4 w-full p-2 bg-gray-800 text-white rounded">Close</button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function handleMaterialSelection(courseId, material, mode) {
+            if (courseId === 'literature' && mode === 'Normal Mode') {
+                let url;
+                switch(material) {
+                    case 'Revision Notes':
+                        url = 'https://drive.google.com/file/d/1VMHRHdYyIj22sZQkZhVzY8muZV20i0lJ/view?usp=drive_link';
+                        break;
+                    case 'Past Year Papers':
+                        url = 'https://dl.ibdocs.re/IB%20PAST%20PAPERS%20-%20SUBJECT/Group%201%20-%20Studies%20in%20Language%20and%20Literature/English_A_Language_and_literature_HL/2022%20November%20Examination%20Session/English_A_Language_and_literature_paper_1__HL.pdf';
+                        break;
+                    case 'Practice Papers':
+                        url = 'https://docs.google.com/document/d/1O7CdZaD3hya7hJPnlpa_wqXcTumERt0l/edit?usp=drive_link&ouid=103206149970258138484&rtpof=true&sd=true';
+                        break;
+                }
+                window.open(url, '_blank');
+            } else {
+                showPurchasePrompt();
+            }
+        }
+
+        function showPurchasePrompt() {
+            alert('Please contact +1 234 567 8900 to complete your $10 purchase');
+        }
+
+        function closeModal(element) {
+            element.closest('.fixed').remove();
+        }
+
+        function showTab(tabName) {
+            document.getElementById('homeContent').classList.add('hidden');
+            document.getElementById('progressContent').classList.add('hidden');
+            document.getElementById(`${tabName}Content`).classList.remove('hidden');
+
+            // Update active tab styling
+            document.querySelectorAll('#tabs button').forEach(btn => btn.classList.remove('tab-active'));
+            document.querySelector(`#tabs button[onclick="showTab('${tabName}')"]`).classList.add('tab-active');
+        }
+
+        function initializeProgressChart() {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Study Hours',
+                        data: [2, 4, 3, 5, 2, 3, 4],
+                        borderColor: 'rgb(75, 85, 99)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializePurchaseHistory() {
+            const purchaseHistory = document.getElementById('purchaseHistory');
+            const purchases = [
+                { course: 'Physics', date: '2024-01-15', material: 'Revision Notes' },
+                { course: 'Mathematics', date: '2024-01-10', material: 'Practice Papers' }
+            ];
+
+            purchases.forEach(purchase => {
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-gray-50 rounded';
+                item.innerHTML = `
+                    <p class="font-medium">${purchase.course} - ${purchase.material}</p>
+                    <p class="text-sm text-gray-600">Purchased on ${purchase.date}</p>
+                `;
+                purchaseHistory.appendChild(item);
+            });
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('loginForm').reset();
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
